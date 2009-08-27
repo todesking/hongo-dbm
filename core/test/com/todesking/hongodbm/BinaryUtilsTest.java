@@ -1,5 +1,7 @@
 package com.todesking.hongodbm;
 
+import com.todesking.hongodbm.BinaryUtils;
+
 import junit.framework.TestCase;
 
 import static com.todesking.hongodbm.TestHelper.*;

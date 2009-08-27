@@ -5,9 +5,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
-import com.todesking.hongodbm.base.Buckets;
-import com.todesking.hongodbm.base.Data;
-import com.todesking.hongodbm.base.Entry;
 import com.todesking.hongodbm.base.Header;
 import com.todesking.hongodbm.base.Storage;
 
@@ -34,20 +31,22 @@ public class HongoDBMTest extends TestCase {
 			db.put(bin(i), new Integer(i).hashCode(), bin(i * 10));
 
 		for (int i = 0; i < 1000; i++)
-			assertArrayEquals(bin(i * 10), db.get(bin(i), new Integer(i).hashCode()));
+			assertArrayEquals(bin(i * 10), db.get(bin(i), new Integer(i)
+				.hashCode()));
 
 		final HongoDBM openedDb = HongoDBM.open(storage);
 		for (int i = 0; i < 1000; i++)
-			assertArrayEquals(bin(i * 10), openedDb.get(bin(i), new Integer(i).hashCode()));
+			assertArrayEquals(bin(i * 10), openedDb.get(bin(i), new Integer(i)
+				.hashCode()));
 	}
-	
+
 	public void testOpenCorruptedBuckets() {
-		final Storage storage=new ArrayStorage(0);
-		new Header(storage,0L).initialize(100, 100);
+		final Storage storage = new ArrayStorage(0);
+		new Header(storage, 0L).initialize(100, 100);
 		try {
 			HongoDBM.open(storage);
 			fail("invalid buckets");
-		} catch(IllegalArgumentException e) {
+		} catch (IllegalArgumentException e) {
 		}
 	}
 
@@ -214,128 +213,5 @@ public class HongoDBMTest extends TestCase {
 	private static HongoDBM createDBM(int buckets) throws IOException {
 		final Storage storage = new ArrayStorage(0);
 		return HongoDBM.create(storage, new HongoDBM.Params(16, buckets));
-	}
-
-	public static class ArrayStorageTest extends TestCase {
-		public void test() {
-			final ArrayStorage storage = new ArrayStorage(1);
-			new AssertThrows(IndexOutOfBoundsException.class) {
-				@Override
-				protected void proc() throws Exception {
-					storage.read(-1, 1);
-				}
-			};
-			try {
-				storage.read(0L, 4);
-				fail();
-			} catch (IndexOutOfBoundsException e) {
-			}
-			
-			new AssertThrows(IndexOutOfBoundsException.class) {
-				@Override
-				protected void proc() throws Exception {
-					storage.write(0x7FFFFFFFFL, ba(10));
-				}
-			};
-			storage.write(0, BinaryUtils.encodeInt(10));
-			assertArrayEquals(BinaryUtils.encodeInt(10), storage.read(0L, 4));
-
-			storage.fill(0L, 8, (byte) 0);
-			assertArrayEquals(ba(0, 0, 0, 0, 0, 0, 0, 0), storage.read(0L, 8));
-		}
-		public void testClose() throws Exception {
-			final ArrayStorage storage = new ArrayStorage(1);
-			storage.close();
-			assertThrows(NullPointerException.class,storage,"close");
-		}
-		
-		public void testFlush() {
-			final ArrayStorage storage = new ArrayStorage(1);
-			storage.flush();
-		}
-
-		public void testFillShouldExtendStorage() {
-			final ArrayStorage storage = new ArrayStorage(0);
-			storage.fill(0L, 10, (byte) 0xFF);
-			assertArrayEquals(BinaryUtils.encodeInt(0xFFFFFFFF), storage.read(
-				0L,
-				4));
-		}
-	}
-
-	public static class HeaderTest extends TestCase {
-		public void testHeader() {
-			final ArrayStorage storage = new ArrayStorage(0);
-			final Header header = new Header(storage, 0);
-			header.initialize(16, 1000);
-			assertArrayEquals(BinaryUtils.encodeInt(0xDEADBEAF), storage.read(
-				0L,
-				4));
-			assertEquals(16, header.blockSize());
-			assertEquals(1000, header.bucketsSize());
-		}
-	}
-
-	public static class BucketsTest extends TestCase {
-		public void test() {
-			final Storage storage = new ArrayStorage(0);
-			storage.fill(0L, 1000, (byte) 0);
-			final Buckets buckets = new Buckets(storage, 0L, 1000);
-			buckets.initialize();
-			assertEquals(1000, buckets.bucketsSize());
-			assertEquals(-1, buckets.get(100));
-			try {
-				buckets.get(1000);
-				fail();
-			} catch (IndexOutOfBoundsException e) {
-			}
-			buckets.set(999, 100);
-			new AssertThrows(IndexOutOfBoundsException.class) {
-				@Override
-				protected void proc() throws Exception {
-					buckets.set(1000, 10);
-				}
-			};
-			buckets.set(100, 1234);
-			assertEquals(1234, buckets.get(100));
-		}
-	}
-
-	public static class DataTest extends TestCase {
-		public void test() {
-			final Storage storage = new ArrayStorage(0);
-			final Data data = new Data(storage, 0L, 1, true);
-			final byte[] one = BinaryUtils.encodeInt(1);
-			final byte[] twoL = BinaryUtils.encodeLong(2L);
-			final byte[] three = BinaryUtils.encodeInt(3);
-			assertEquals(0, data.add(one, twoL));
-			assertArrayEquals(twoL, data.get(0).value());
-			final long index = data.add(twoL, three);
-			assertArrayEquals(twoL, data.get(index).key());
-			assertArrayEquals(three, data.get(index).value());
-		}
-	}
-
-	public static class EntryTest extends TestCase {
-		public void test() {
-			final Storage storage = new ArrayStorage(0);
-			final Entry entry = new Entry(storage, 0L);
-			final byte[] key = BinaryUtils.encodeInt(1);
-			final byte[] value = BinaryUtils.encodeLong(2L);
-			entry.write(1, key, value);
-			assertArrayEquals(key, entry.key());
-			assertArrayEquals(value, entry.value());
-			assertEquals(key.length, entry.keySize());
-			assertEquals(value.length, entry.valueSize());
-			assertEquals(-1, entry.left());
-			assertEquals(-1, entry.right());
-			entry.setLeft(10);
-			entry.setRight(1000);
-			assertEquals(10, entry.left());
-			assertEquals(1000, entry.right());
-			assertEquals(Entry.HEADER_SIZE + key.length + value.length, entry
-				.size());
-			assertEquals(entry.size(),entry.blocks());
-		}
 	}
 }
