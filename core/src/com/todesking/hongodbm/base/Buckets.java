@@ -31,7 +31,7 @@ public class Buckets extends Section {
 	}
 
 	public void set(int index, long value) {
-		if (index >= bucketsSize())
+		if (index < 0 || bucketsSize() <= index)
 			throw new IndexOutOfBoundsException();
 		storage()
 			.writeLong(offset() + HEADER_SIZE + index * BUCKET_SIZE, value);

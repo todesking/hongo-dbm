@@ -13,13 +13,13 @@ import junit.framework.TestCase;
 import static com.todesking.hongodbm.TestHelper.*;
 
 public class HongoDBMTest extends TestCase {
-	public void testOpen() {
+	public void testOpen() throws Exception {
 		final Storage storage = new ArrayStorage(0);
-		try {
-			HongoDBM.open(storage);
-			fail("uninitialized storage");
-		} catch (IllegalArgumentException e) {
-		}
+		assertThrows(
+			IllegalArgumentException.class,
+			HongoDBM.class,
+			"open",
+			storage);
 		assertEquals(0, storage.size());
 
 		final HongoDBM db =
@@ -40,14 +40,14 @@ public class HongoDBMTest extends TestCase {
 				.hashCode()));
 	}
 
-	public void testOpenCorruptedBuckets() {
+	public void testOpenCorruptedBuckets() throws Exception {
 		final Storage storage = new ArrayStorage(0);
 		new Header(storage, 0L).initialize(100, 100);
-		try {
-			HongoDBM.open(storage);
-			fail("invalid buckets");
-		} catch (IllegalArgumentException e) {
-		}
+		assertThrows(
+			IllegalArgumentException.class,
+			HongoDBM.class,
+			"open",
+			storage);
 	}
 
 	public void testPutSimple() throws Exception {
@@ -71,12 +71,7 @@ public class HongoDBMTest extends TestCase {
 		db.put(hoge, 0, one);
 		db.put(one, 0, hoge);
 
-		new AssertThrows(IllegalArgumentException.class) {
-			@Override
-			protected void proc() throws Exception {
-				db.put(hoge, 0, one);
-			}
-		};
+		assertThrows(IllegalArgumentException.class, db, "put", hoge, 0, one);
 
 		assertArrayEquals(hoge, db.get(one, 0));
 		assertNull(db.get(one, 1));
@@ -135,42 +130,66 @@ public class HongoDBMTest extends TestCase {
 	}
 
 	public void testDelete() throws Exception {
-		final HongoDBM db = createDBM();
+		{
+			final HongoDBM db = createDBM();
 
-		new AssertThrows(IllegalArgumentException.class) {
-			@Override
-			protected void proc() throws Exception {
-				db.delete(bin("key"), 0);
-			}
-		};
+			assertThrows(
+				IllegalArgumentException.class,
+				db,
+				"delete",
+				bin("key"),
+				0);
 
-		db.put(bin("key"), 0, bin(100));
-		db.put(bin("key2"), 0, bin(200));
-		assertArrayEquals(bin(100), db.get(bin("key"), 0));
-		assertArrayEquals(bin(200), db.get(bin("key2"), 0));
+			db.put(bin("key"), 0, bin(100));
+			db.put(bin("key2"), 0, bin(200));
+			assertArrayEquals(bin(100), db.get(bin("key"), 0));
+			assertArrayEquals(bin(200), db.get(bin("key2"), 0));
 
-		// 他のエントリからつながってる要素、子なし
-		db.delete(bin("key2"), 0);
-		assertArrayEquals(bin(100), db.get(bin("key"), 0));
-		assertNull(db.get(bin("key2"), 0));
+			// 他のエントリからつながってる要素、子なし
+			db.delete(bin("key2"), 0);
+			assertArrayEquals(bin(100), db.get(bin("key"), 0));
+			assertNull(db.get(bin("key2"), 0));
 
-		// バケットから直接つながってる要素、子なし
-		db.delete(bin("key"), 0);
-		assertNull(db.get(bin("key"), 0));
+			// バケットから直接つながってる要素、子なし
+			db.delete(bin("key"), 0);
+			assertNull(db.get(bin("key"), 0));
 
-		// aaa => key1 => {key0,key2}
-		db.put(bin("aaa"), 0, bin(-1));
-		db.put(bin("aa"), 0, bin(-10));
-		db.put(bin("key1"), 0, bin(100));
-		db.put(bin("key0"), 0, bin(0));
-		db.put(bin("key2"), 0, bin(200));
+			// aaa => key1 => {key0,key2}
+			db.put(bin("aaa"), 0, bin(-1));
+			db.put(bin("aa"), 0, bin(-10));
+			db.put(bin("key1"), 0, bin(100));
+			db.put(bin("key0"), 0, bin(0));
+			db.put(bin("key2"), 0, bin(200));
 
-		db.delete(bin("key0"), 0);
-		assertNull(db.get(bin("key0"), 0));
-		assertArrayEquals(bin(100), db.get(bin("key1"), 0));
-		assertArrayEquals(bin(200), db.get(bin("key2"), 0));
-		assertArrayEquals(bin(-1), db.get(bin("aaa"), 0));
-		assertArrayEquals(bin(-10), db.get(bin("aa"), 0));
+			db.delete(bin("key0"), 0);
+			assertNull(db.get(bin("key0"), 0));
+			assertArrayEquals(bin(100), db.get(bin("key1"), 0));
+			assertArrayEquals(bin(200), db.get(bin("key2"), 0));
+			assertArrayEquals(bin(-1), db.get(bin("aaa"), 0));
+			assertArrayEquals(bin(-10), db.get(bin("aa"), 0));
+		}
+		{
+			final HongoDBM db = createDBM();
+			// 0 => {,1}
+			db.put(ba(0), 0, bin(0));
+			db.put(ba(1), 0, bin(1));
+			assertArrayEquals(bin(0), db.get(ba(0), 0));
+			assertArrayEquals(bin(1), db.get(ba(1), 0));
+			db.delete(ba(0), 0);
+			assertNull(db.get(ba(0), 0));
+			assertArrayEquals(bin(1), db.get(ba(1), 0));
+		}
+		{
+			final HongoDBM db = createDBM();
+			// 1 => {0,}
+			db.put(ba(1), 0, bin(1));
+			db.put(ba(0), 0, bin(0));
+			assertArrayEquals(bin(0), db.get(ba(0), 0));
+			assertArrayEquals(bin(1), db.get(ba(1), 0));
+			db.delete(ba(1), 0);
+			assertArrayEquals(bin(0), db.get(ba(0), 0));
+			assertNull(db.get(ba(1), 1));
+		}
 
 	}
 

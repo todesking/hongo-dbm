@@ -17,7 +17,7 @@ public class EntryTest extends TestCase {
 		final Entry entry = new Entry(storage, 0L);
 		final byte[] key = BinaryUtils.encodeInt(1);
 		final byte[] value = BinaryUtils.encodeLong(2L);
-		entry.write(1, key, value);
+		entry.write(2, key, value);
 		assertArrayEquals(key, entry.key());
 		assertArrayEquals(value, entry.value());
 		assertEquals(key.length, entry.keySize());
@@ -30,6 +30,8 @@ public class EntryTest extends TestCase {
 		assertEquals(1000, entry.right());
 		assertEquals(Entry.HEADER_SIZE + key.length + value.length, entry
 			.size());
-		assertEquals(entry.size(), entry.blocks());
+		assertEquals(
+			(Entry.HEADER_SIZE + key.length + value.length + 1) / 2,
+			entry.blocks());
 	}
 }

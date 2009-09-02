@@ -8,29 +8,17 @@ import static com.todesking.hongodbm.TestHelper.assertThrows;
 import static com.todesking.hongodbm.TestHelper.ba;
 import junit.framework.TestCase;
 
-import com.todesking.hongodbm.TestHelper.AssertThrows;
-
 public class ArrayStorageTest extends TestCase {
-	public void test() {
+	public void test() throws Exception {
 		final ArrayStorage storage = new ArrayStorage(1);
-		new AssertThrows(IndexOutOfBoundsException.class) {
-			@Override
-			protected void proc() throws Exception {
-				storage.read(-1, 1);
-			}
-		};
-		try {
-			storage.read(0L, 4);
-			fail();
-		} catch (IndexOutOfBoundsException e) {
-		}
-
-		new AssertThrows(IndexOutOfBoundsException.class) {
-			@Override
-			protected void proc() throws Exception {
-				storage.write(0x7FFFFFFFFL, ba(10));
-			}
-		};
+		assertThrows(IndexOutOfBoundsException.class, storage, "read", -1L, 1);
+		assertThrows(IndexOutOfBoundsException.class, storage, "read", 0L, 4);
+		assertThrows(
+			IndexOutOfBoundsException.class,
+			storage,
+			"write",
+			0x7FFFFFFFFL,
+			ba(10));
 		storage.write(0, BinaryUtils.encodeInt(10));
 		assertArrayEquals(BinaryUtils.encodeInt(10), storage.read(0L, 4));
 

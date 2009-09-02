@@ -7,7 +7,7 @@ import junit.framework.TestCase;
 import static com.todesking.hongodbm.TestHelper.*;
 
 public class BinaryUtilsTest extends TestCase {
-	public void testInt() {
+	public void testInt() throws Exception {
 		checkInt(0);
 		checkInt(100);
 		checkInt(-100);
@@ -15,15 +15,14 @@ public class BinaryUtilsTest extends TestCase {
 		checkInt(0x12345678);
 
 		BinaryUtils.decodeInt(ba(0, 1, 2, 3));
-		new AssertThrows(IllegalArgumentException.class) {
-			@Override
-			protected void proc() throws Exception {
-				BinaryUtils.decodeInt(ba(0, 1, 2));
-			}
-		};
+		assertThrows(
+			IllegalArgumentException.class,
+			BinaryUtils.class,
+			"decodeInt",
+			ba(0, 1, 2));
 	}
 
-	public void testLong() {
+	public void testLong() throws Exception {
 		checkLong(0);
 		checkLong(100);
 		checkLong(-1000000000L);
@@ -31,12 +30,11 @@ public class BinaryUtilsTest extends TestCase {
 		checkLong(0x1234567890ABCDEFL);
 
 		BinaryUtils.decodeLong(ba(0, 1, 2, 3, 4, 5, 6, 7));
-		new AssertThrows(IllegalArgumentException.class) {
-			@Override
-			protected void proc() throws Exception {
-				BinaryUtils.decodeLong(ba(0, 1, 2, 3, 4, 5, 6, 7, 8));
-			}
-		};
+		assertThrows(
+			IllegalArgumentException.class,
+			BinaryUtils.class,
+			"decodeLong",
+			ba(0, 1, 2, 3, 4, 5, 6, 7, 8));
 	}
 
 	public void testString() {
