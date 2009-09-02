@@ -1,5 +1,7 @@
 package com.todesking.hongodbm;
 
+import org.apache.commons.lang.ArrayUtils;
+
 import com.todesking.hongodbm.base.Buckets;
 import com.todesking.hongodbm.base.Data;
 import com.todesking.hongodbm.base.Entry;
@@ -55,23 +57,117 @@ public class HongoDBM {
 			return entry.current.value();
 	}
 
+	/**
+	 * put key-value pair. error if key exists.
+	 * 
+	 * @param key
+	 * @param hash
+	 * @param value
+	 * @throws IllegalArgumentException
+	 *             if key conflicts
+	 */
 	public void put(byte[] key, int hash, byte[] value) {
 		final EntryChain entry = lookupEntry(key, hash);
 		assert entry != null;
 		if (entry.current != null)
 			throw new IllegalArgumentException("key conflicted");
+		putImpl(key, hash, value, entry);
+	}
+
+	/**
+	 * put key-value pair. do nothing if key exists. put value
+	 * 
+	 * @param key
+	 * @param hash
+	 * @param value
+	 */
+	public void putIgnore(byte[] key, int hash, byte[] value) {
+		final EntryChain entry = lookupEntry(key, hash);
+		assert entry != null;
+		if (entry.current != null)
+			return;
+		putImpl(key, hash, value, entry);
+	}
+
+	/**
+	 * put key-value pair. append value if key exists. put value
+	 * 
+	 * @param key
+	 * @param hash
+	 * @param value
+	 */
+	public void putConcat(byte[] key, int hash, byte[] value) {
+		EntryChain entry = lookupEntry(key, hash);
+		assert entry != null;
+		if (entry.current != null) {
+			final byte[] prevValue = entry.current.value();
+			delete(key, hash);
+			entry = lookupEntry(key, hash);
+			value = ArrayUtils.addAll(prevValue, value);
+			assert entry.current == null;
+		}
+		putImpl(key, hash, value, entry);
+	}
+
+	/**
+	 * put key-value pair. replace value if key exists. put value
+	 * 
+	 * @param key
+	 * @param hash
+	 * @param value
+	 */
+	public void putReplace(byte[] key, int hash, byte[] value) {
+		EntryChain entry = lookupEntry(key, hash);
+		assert entry != null;
+		if (entry.current != null) {
+			delete(key, hash);
+			entry = lookupEntry(key, hash);
+			assert entry.current == null;
+		}
+		putImpl(key, hash, value, entry);
+	}
+
+	private void putImpl(byte[] key, int hash, byte[] value, EntryChain entry) {
+		updatePointer(entry, hash, data.add(key, value));
+	}
+
+	private void updatePointer(EntryChain entry, int hash, long index) {
 		if (entry.prev == null) {
-			buckets.set(bucketIndex(hash), data.add(key, value));
+			buckets.set(bucketIndex(hash), index);
 		} else {
-			entry.prev.setBrahch(entry.branchLeft, data.add(key, value));
+			entry.prev.setBrahch(entry.branchLeft, index);
 		}
 	}
 
+	/**
+	 * delete if exists
+	 * 
+	 * @param key
+	 * @param hash
+	 */
+	public void deleteIgnore(byte[] key, int hash) {
+		final EntryChain entry = lookupEntry(key, hash);
+		if (entry.current == null)
+			return;
+
+		deleteImpl(entry, hash);
+	}
+
+	/**
+	 * delete(error if key is not exists)
+	 * 
+	 * @param key
+	 * @param hash
+	 */
 	public void delete(byte[] key, int hash) {
 		final EntryChain entry = lookupEntry(key, hash);
 		if (entry.current == null)
 			throw new IllegalArgumentException("key not found");
 
+		deleteImpl(entry, hash);
+	}
+
+	private void deleteImpl(final EntryChain entry, int hash) {
 		final long insertTarget;
 		if (entry.current.left() == -1) {
 			insertTarget = entry.current.right();
@@ -87,11 +183,7 @@ public class HongoDBM {
 			insertTarget = entry.current.left();
 		}
 
-		if (entry.prev == null) { // link from bucket
-			buckets.set(bucketIndex(hash), insertTarget);
-		} else { // link from other entry
-			entry.prev.setBrahch(entry.branchLeft, insertTarget);
-		}
+		updatePointer(entry, hash, insertTarget);
 	}
 
 	private static class EntryChain {

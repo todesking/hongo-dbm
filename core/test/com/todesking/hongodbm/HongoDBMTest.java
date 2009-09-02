@@ -5,6 +5,8 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.apache.commons.lang.ArrayUtils;
+
 import com.todesking.hongodbm.base.Header;
 import com.todesking.hongodbm.base.Storage;
 
@@ -59,6 +61,41 @@ public class HongoDBMTest extends TestCase {
 		db.put(hoge, Arrays.hashCode(hoge), one);
 		assertArrayEquals(one, db.get(hoge, Arrays.hashCode(hoge)));
 
+	}
+
+	public void testPutIgnore() throws Exception {
+		final HongoDBM db = createDBM();
+		db.put(bin("hoge"), 0, bin(10));
+		assertArrayEquals(bin(10), db.get(bin("hoge"), 0));
+		db.putIgnore(bin("hoge"), 0, bin(100));
+		assertArrayEquals(bin(10), db.get(bin("hoge"), 0));
+	}
+
+	public void testPutConcat() throws Exception {
+		final HongoDBM db = createDBM();
+		db.put(bin("hoge"), 0, bin(10));
+		assertArrayEquals(bin(10), db.get(bin("hoge"), 0));
+		db.putConcat(bin("hoge"), 0, bin(100));
+		assertArrayEquals(ArrayUtils.addAll(bin(10), bin(100)), db.get(
+			bin("hoge"),
+			0));
+	}
+
+	public void testPutReplace() throws Exception {
+		final HongoDBM db = createDBM();
+		db.put(bin("hoge"), 0, bin(10));
+		assertArrayEquals(bin(10), db.get(bin("hoge"), 0));
+		db.putReplace(bin("hoge"), 0, bin(100));
+		assertArrayEquals(bin(100), db.get(bin("hoge"), 0));
+	}
+
+	public void testDeleteIgnore() throws Exception {
+		final HongoDBM db = createDBM();
+		db.put(bin("hoge"), 0, bin(10));
+		db.deleteIgnore(bin("fuga"), 0);
+		assertArrayEquals(bin(10), db.get(bin("hoge"), 0));
+		db.deleteIgnore(bin("hoge"), 0);
+		assertNull(db.get(bin("hoge"), 0));
 	}
 
 	public void testPutCollision() throws Exception {
