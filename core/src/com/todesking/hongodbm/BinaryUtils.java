@@ -1,6 +1,6 @@
 package com.todesking.hongodbm;
 
-import java.nio.charset.Charset;
+import java.io.UnsupportedEncodingException;
 
 public class BinaryUtils {
 	public static byte[] encodeLong(long value) {
@@ -41,14 +41,20 @@ public class BinaryUtils {
 		return result;
 	}
 
-	private static final Charset UTF8 = Charset.forName("UTF-8");
-
 	public static byte[] encodeString(String value) {
-		return value.getBytes(UTF8);
+		try {
+			return value.getBytes("UTF8");
+		} catch(UnsupportedEncodingException e) {
+			throw new RuntimeException("wtf",e);
+		}
 	}
 
 	public static String decodeString(byte[] value) {
-		return new String(value, UTF8);
+		try {
+			return new String(value, "UTF8");
+		} catch(UnsupportedEncodingException e) {
+			throw new RuntimeException("wtf", e);
+		}
 	}
 
 	public static int compare(byte[] l, byte[] r) {
